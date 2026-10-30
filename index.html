@@ -63,7 +63,7 @@ button{min-height:40px}
 <div class="card" id="codebox" hidden><h2>🔐 Connexion au vélo partagé</h2>
  <div class="fg"><label>Code d’accès<input id="code_in" type="password" autocomplete="off"></label></div>
  <div class="row"><button id="code_ok">Connecter</button></div>
- <p class="mut">Demande le code à la personne qui gère le vélo. Sans code, l’app marche seule sur ce téléphone.</p></div>
+ <p class="mut">Demande le code à la personne qui gère le vélo. Sans code, aucune donnée n’est affichée.</p></div>
 <div class="verdict w" id="alerts" hidden></div>
 <div class="sec">Batteries</div>
 <div class="two" id="bats"></div>
@@ -128,20 +128,19 @@ let S={km0:188,ab:40,bats:[{id:'A',serial:''},{id:'B',serial:''}],trips:[],charg
 let C={assist:'',load:'',relief:''};   // conditions choisies pour la prochaine sortie
 let showAll=false;                      // historique : 30 dernières ou tout
 
-/* --- Chargement + migration depuis l'ancienne version (v2) --- */
+/* --- Données : UNIQUEMENT sur Supabase. Sur le téléphone ne restent que le code d'accès et le dernier conducteur. ---
+   Reprise unique : si ce navigateur contient encore d'anciennes données locales, elles sont envoyées
+   au serveur à la première synchro (sans rien écraser), puis effacées d'ici. */
 try{
- const r=localStorage.getItem(K), old=localStorage.getItem('yokler-xl-v2');
- if(r) S=Object.assign(S,JSON.parse(r));
- else if(old){const o=JSON.parse(old);S.km0=o.km0||188;S.ab=o.ab||40;S.bats=o.bats||S.bats;
-  S.trips=(o.e||[]).map(x=>({id:x.id,date:x.date,kmd:x.kmd,kmf:x.kmf,who:x.who,cond:{},
-   segs:ID.filter(i=>x.u&&x.u[i]&&x.u[i].on).map(i=>({b:i,p0:x.u[i].p0,p1:x.u[i].p1,km:x.u[i].km}))}))}
+ const p=JSON.parse(localStorage.getItem('yokler-prefs')||'{}');S.who=p.who||'';S.mode=p.mode||'';
+ const r=localStorage.getItem(K);if(r){S=Object.assign(S,JSON.parse(r));S.snap=undefined}
 }catch(e){}
 
 /* ===== Petits outils ===== */
 const $=i=>document.getElementById(i);
 const n=i=>parseFloat($(i).value);                       // lit un champ numérique
-const localSave=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
-const save=()=>{localSave();clearTimeout(T);T=setTimeout(sync,600)};   // chaque enregistrement déclenche une synchro (après 0,6 s)
+const localSave=()=>{try{localStorage.setItem('yokler-prefs',JSON.stringify({who:S.who,mode:S.mode}))}catch(e){}};   // préférences seulement
+const save=()=>{localSave();clearTimeout(T);T=setTimeout(sync,200)};   // chaque enregistrement déclenche une synchro (après 0,6 s)
 const r1=x=>Math.round(x*10)/10;
 const fmt=x=>r1(x).toLocaleString('fr-FR');
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -292,6 +291,7 @@ document.addEventListener('click',ev=>{
   const k=parseFloat(prompt('Tous les combien de km ?',m.every));m.name=nm.trim()||m.name;if(k>0)m.every=k;save();renderAll();return}
  if(t.dataset.m){maint().find(x=>x.id===t.dataset.m).last=cur();save();renderAll();return}   // entretien marqué « fait » au compteur actuel
  warn('');const o=S.open;
+ if(!READY&&['go','swp_ok','end','q_save','c_add','m_add'].includes(t.id))return warn('Pas encore connecté au serveur : attends « ✅ Synchronisé » avant de saisir.');
  switch(t.id){
   case 'go':{ // DÉPART
    const km=n('d_km'),p=n('d_p');
@@ -371,8 +371,10 @@ function exporter(){ // télécharge toutes les données dans un fichier JSON
 $('imp').addEventListener('change',ev=>{ // restaure depuis un fichier JSON
  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{try{const o=JSON.parse(r.result);if(!Array.isArray(o.trips))throw 0;
-  if(!confirm('Remplacer les données actuelles par cette sauvegarde ?'))return;
-  S=Object.assign(S,o);save();renderAll()}catch(e){warn('Fichier de sauvegarde invalide.')}};
+  if(!confirm('Ajouter les sorties et charges de cette sauvegarde aux données partagées ?'))return;
+  o.trips.forEach(t=>{if(!S.trips.some(x=>String(x.id)===String(t.id)))S.trips.push(t)});
+  (o.charges||[]).forEach(c=>{if(!S.charges.some(x=>String(x.id)===String(c.id)))S.charges.push(c)});
+  save();renderAll()}catch(e){warn('Fichier de sauvegarde invalide.')}};
  r.readAsText(f);ev.target.value=''});
 function garantie(){ // page imprimable : n° de série, autonomie mesurée, détail des segments
  let h=`<h1>Dossier batteries – Yokler XL</h1><p>Édité le ${fr(today())} · compteur ${fmt(cur())} km · autonomie annoncée ${S.ab} km par batterie</p>`;
@@ -451,7 +453,7 @@ function renderAlerts(){
      tout passe par des fonctions SQL protégées par le code d'accès (jamais écrit ici).
    ========================================================================== */
 const SB={url:'https://tiwhumjxsykcnxfrlbkl.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpd2h1bWp4c3lrY254ZnJsYmtsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNTE1NTQsImV4cCI6MjEwODkyNzU1NH0.z9l7MKZUf8tcqsb2F1nFqwkf4oBzcxM8W2TGENhKzdI'};
-let T,syncing=false,again=false,CODE='',QB='';
+let T,syncing=false,again=false,READY=false,CODE='',QB='';
 try{CODE=localStorage.getItem('yokler-code')||''}catch(e){}
 // Lien/QR : #code=XXXX connecte direct, #bat=A ou #bat=B présélectionne la batterie
 const H=new URLSearchParams(location.hash.slice(1));
@@ -472,7 +474,7 @@ const TBL=()=>({
  trips:S.trips.map(t=>({...t,id:String(t.id)})),
  charges:S.charges.map(c=>({id:String(c.id),date:c.date,b:c.b,p0:c.p0,min:c.min})),
  maint:maint().map(m=>({id:m.id,name:m.name,every:m.every,last:m.last})),
- settings:[{id:'km0',value:String(S.km0)},{id:'ab',value:String(S.ab)}]});
+ settings:[{id:'km0',value:String(S.km0)},{id:'ab',value:String(S.ab)},{id:'open',value:S.open?JSON.stringify(S.open):''}]});
 // Photo de ce que le serveur connaît : sert à n'envoyer que les lignes modifiées
 const snapOf=()=>{const L=TBL(),o={};for(const k in L){o[k]={};L[k].forEach(r=>o[k][r.id]=JSON.stringify(r))}return o};
 // Remplace les données locales par celles du serveur (la source commune)
@@ -483,6 +485,7 @@ function adopt(d){
  d.batteries.forEach(b=>{const x=S.bats.find(y=>y.id===b.id);if(x)x.serial=b.serial||''});
  if(d.settings.km0)S.km0=parseFloat(d.settings.km0);
  if(d.settings.ab)S.ab=parseFloat(d.settings.ab)||40;
+ S.open=d.settings.open?JSON.parse(d.settings.open):null;
 }
 // 1re connexion de ce téléphone : on envoie seulement ce que le serveur ne connaît pas
 async function firstPush(){
@@ -490,6 +493,7 @@ async function firstPush(){
  for(const k of ['trips','charges'])for(const r of L[k])if(!d[k].some(x=>x.id===r.id))await put(k,r);
  if(!d.maint.length)for(const r of L.maint)await put('maint',r);
  for(const r of L.batteries){const s=d.batteries.find(x=>x.id===r.id);if(r.serial&&!(s&&s.serial))await put('batteries',r)}
+ if(S.open&&!d.settings.open)await put('settings',{id:'open',value:JSON.stringify(S.open)});
 }
 // Ensuite : on envoie les lignes ajoutées / modifiées, et on supprime celles effacées ici
 async function push(){
@@ -508,7 +512,7 @@ async function sync(){
   const before=JSON.stringify(TBL());
   if(S.snap)await push();else await firstPush();
   adopt(await rpc('get_all',{p_code:CODE}));
-  S.snap=snapOf();localSave();
+  S.snap=snapOf();localSave();READY=true;try{localStorage.removeItem(K)}catch(e){}
   setStat('✅ Synchronisé à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
   if(JSON.stringify(TBL())!==before){ // du nouveau est arrivé : on rafraîchit (sans effacer un formulaire en cours de saisie)
    const f=document.activeElement;
@@ -516,7 +520,7 @@ async function sync(){
   }
  }catch(e){
   if(/code invalide/.test(e.message)){CODE='';try{localStorage.removeItem('yokler-code')}catch(_){}$('codebox').hidden=false;setStat('🔐 Code d’accès refusé')}
-  else setStat('📴 Hors ligne : tes saisies sont gardées ici et seront envoyées plus tard');
+  else setStat(READY?'⚠️ Pas de connexion : ta dernière saisie n’est PAS encore enregistrée. Elle sera renvoyée tant que cette page reste ouverte.':'📴 Pas de connexion au serveur : aucune donnée affichée');
  }
  syncing=false;if(again){again=false;sync()}
 }
@@ -531,7 +535,7 @@ document.querySelectorAll('.sec').forEach(h=>{
  h.style.cursor='pointer';set(!['Journal de charge','Historique','Outils'].includes(t));
  h.onclick=()=>set(b.hidden)});
 // Synchro : au lancement, au retour sur l'app, au retour du réseau, puis toutes les minutes
-if(CODE)sync();else{$('codebox').hidden=false;setStat('📴 Mode local : entre le code d’accès pour partager les données')}
+if(CODE)sync();else{$('codebox').hidden=false;setStat('🔐 Entre le code d’accès pour charger les données')}
 addEventListener('online',sync);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 setInterval(()=>{if(!document.hidden)sync()},60000);
