@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yokler XL – Suivi</title>
+<style>
+/* ===== Thème : couleurs en variables, version sombre automatique ===== */
+:root{--bg:#eef2ef;--card:#fff;--tx:#17231c;--mut:#6b7a70;--bd:#e3e9e5;--in:#f5f8f6;--ac:#1f8a5b;--acs:#e5f3ec;--ca:#1f8a5b;--cb:#3b82f6;--warn:#c2410c;--warnbg:#fff0e6;--bad:#b91c1c;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1511;--card:#17211b;--tx:#e8efe9;--mut:#8fa196;--bd:#27342c;--in:#0f1712;--ac:#3fbf86;--acs:#1c3428;--ca:#3fbf86;--cb:#60a5fa;--warn:#fb923c;--warnbg:#35230f;--bad:#f87171}}
+:root[data-theme="dark"]{--bg:#0e1511;--card:#17211b;--tx:#e8efe9;--mut:#8fa196;--bd:#27342c;--in:#0f1712;--ac:#3fbf86;--acs:#1c3428;--ca:#3fbf86;--cb:#60a5fa;--warn:#fb923c;--warnbg:#35230f;--bad:#f87171}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:920px;margin:0 auto;padding:14px 14px 40px}
+h2{margin:0 0 10px;font-size:1.05rem}
+.hero{background:linear-gradient(135deg,#14532d,#1f8a5b);color:#fff;border-radius:22px;padding:20px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.hero h1{margin:0;font-size:1.4rem}.hero p{margin:2px 0 0;opacity:.85;font-size:.85rem}
+.odo{text-align:right}.odo b{font-size:2.4rem;line-height:1}
+.sec{margin:20px 4px 8px;font-size:.74rem;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);font-weight:700}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:16px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.bat{border-left:5px solid var(--c)}.bat h3{margin:0 0 8px;font-size:1rem;color:var(--c)}
+.big{font-size:2rem;font-weight:700;line-height:1.1}.big small{font-size:.82rem;color:var(--mut);font-weight:500}
+.meter{height:8px;border-radius:5px;background:var(--acs);margin:8px 0;overflow:hidden}.meter i{display:block;height:100%;background:var(--c)}
+.mut{color:var(--mut);font-size:.82rem}
+.verdict{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--acs);font-size:.92rem}.verdict.w,.msg{background:var(--warnbg);color:var(--warn)}
+.msg{margin-top:10px;padding:10px 12px;border-radius:12px;font-size:.86rem}
+label{display:flex;flex-direction:column;font-size:.78rem;color:var(--mut);gap:4px;font-weight:600}
+input,select,textarea{font:inherit;font-weight:400;color:var(--tx);background:var(--in);border:1px solid var(--bd);border-radius:11px;padding:10px;width:100%}
+button{font:inherit;border:0;border-radius:12px;padding:10px 16px;background:var(--ac);color:#fff;font-weight:700;cursor:pointer}
+button.sec2{background:var(--acs);color:var(--ac)}button.del{background:none;color:var(--bad);padding:2px 8px}
+.chips{margin:12px 0;display:flex;flex-direction:column;gap:8px}.chips div{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.chips span{font-size:.78rem;color:var(--mut);font-weight:600;min-width:80px}
+.chip{background:var(--in);color:var(--tx);border:1px solid var(--bd);padding:6px 12px;font-weight:500}.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:560px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd);vertical-align:top}th{color:var(--mut);font-size:.72rem;text-transform:uppercase}
+.pill{padding:1px 8px;border-radius:99px;font-size:.74rem;background:var(--acs);color:var(--ac);font-weight:600}.pill.w{background:var(--warnbg);color:var(--warn)}
+details summary{cursor:pointer;font-weight:700}
+#gar{display:none}[hidden]{display:none!important}.sec{user-select:none}
+@media print{body.pg main>*:not(#gar){display:none}body.pg #gar{display:block;color:#000}body{background:#fff}}
+</style>
+</head>
+<body>
+<main>
+<div class="hero">
+ <div><h1>🚲 Yokler XL</h1><p id="sum">Suivi des sorties et des batteries</p></div>
+ <div class="odo"><small>COMPTEUR</small><br><b id="odo">188</b> km</div>
+</div>
+
+<div class="verdict w" id="alerts" hidden></div>
+<div class="sec">Batteries</div>
+<div class="two" id="bats"></div>
+<div class="verdict" id="verdict"></div>
+<div class="card" style="margin-top:12px"><div class="mut" style="margin-bottom:6px">Consommation par segment (% de batterie perdus par km). Plus c’est haut, plus la batterie se vide vite. Pointillés : consommation théorique.</div><div id="chart"></div></div>
+
+<div class="sec">Sortie</div>
+<div class="card" id="panel"></div>
+<div class="msg" id="msg" hidden></div>
+
+<div class="sec">Journal de charge</div>
+<div class="card">
+ <div class="fg">
+  <label>Batterie<select id="c_b"><option>A</option><option>B</option></select></label>
+  <label>Date<input type="date" id="c_d"></label>
+  <label>% avant charge<input type="number" id="c_p" min="0" max="100"></label>
+  <label>Durée (min)<input type="number" id="c_m" min="0"></label>
+ </div>
+ <div class="row"><button id="c_add">Ajouter la charge</button></div>
+ <div class="tw"><table><tbody id="ctb"></tbody></table></div>
+</div>
+
+<div class="sec">Entretien</div>
+<div class="card" id="maint"></div>
+
+<div class="sec">Historique</div>
+<div class="card">
+ <div class="tw"><table><thead><tr><th>Date</th><th>Km</th><th>Segments (batterie, %, km)</th><th>Conditions</th><th>Conducteur</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+ <p id="empty" class="mut">Aucune sortie pour l’instant.</p>
+ <button class="sec2" id="all">Voir tout</button>
+</div>
+
+<div class="sec">Outils</div>
+<div class="card">
+ <div class="row" style="margin-top:0">
+  <button class="sec2" id="gbtn">📄 Dossier garantie</button>
+  <button class="sec2" id="exp">💾 Sauvegarde (JSON)</button>
+  <button class="sec2" onclick="$('imp').click()">📂 Restaurer</button>
+  <input type="file" id="imp" accept=".json" hidden>
+ </div>
+ <details style="margin-top:14px"><summary>Réglages</summary><div class="fg" style="margin-top:10px">
+  <label>Compteur de départ (km)<input type="number" id="k0" step="0.1"></label>
+  <label>Autonomie annoncée / batterie (km)<input type="number" id="ab" min="1"></label></div></details>
+</div>
+<section id="gar"></section>
+</main>
+
+<script>
+/* ==========================================================================
+   MODÈLE DE DONNÉES (tout est stocké dans le navigateur, clé « yokler-xl-v3 »)
+   S.trips  = sorties terminées : {id,date,kmd,kmf,who,cond,segs}
+   segs     = un segment = une batterie utilisée sur une portion de trajet :
+              {b:'A', p0:% départ, p1:% fin, km:km faits avec elle}
+              (plusieurs segments si on change de batterie en route)
+   S.open   = sortie en cours (null si aucune) : {date,kmd,who,cond,segs,cur}
+              cur = segment en cours {b,km0,p0}
+   S.charges= journal de charge : {id,date,b,p0,min}
+   ========================================================================== */
+const K='yokler-xl-v3', ID=['A','B'];
+let S={km0:188,ab:40,bats:[{id:'A',serial:''},{id:'B',serial:''}],trips:[],charges:[],open:null,who:''};
+let C={assist:'',load:'',relief:''};   // conditions choisies pour la prochaine sortie
+let showAll=false;                      // historique : 30 dernières ou tout
+
+/* --- Chargement + migration depuis l'ancienne version (v2) --- */
+try{
+ const r=localStorage.getItem(K), old=localStorage.getItem('yokler-xl-v2');
+ if(r) S=Object.assign(S,JSON.parse(r));
+ else if(old){const o=JSON.parse(old);S.km0=o.km0||188;S.ab=o.ab||40;S.bats=o.bats||S.bats;
+  S.trips=(o.e||[]).map(x=>({id:x.id,date:x.date,kmd:x.kmd,kmf:x.kmf,who:x.who,cond:{},
+   segs:ID.filter(i=>x.u&&x.u[i]&&x.u[i].on).map(i=>({b:i,p0:x.u[i].p0,p1:x.u[i].p1,km:x.u[i].km}))}))}
+}catch(e){}
+
+/* ===== Petits outils ===== */
+const $=i=>document.getElementById(i);
+const n=i=>parseFloat($(i).value);                       // lit un champ numérique
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const r1=x=>Math.round(x*10)/10;
+const fmt=x=>r1(x).toLocaleString('fr-FR');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const fr=d=>d.split('-').reverse().join('/');
+const col=i=>i==='A'?'var(--ca)':'var(--cb)';
+const warn=t=>{$('msg').textContent=t;$('msg').hidden=!t};
+// Compteur actuel = le plus grand relevé connu (départ, sorties, segment en cours)
+const cur=()=>Math.max(S.km0,...S.trips.map(t=>t.kmf),S.open?S.open.cur.km0:0);
+
+/* ==========================================================================
+   STATISTIQUES BATTERIES
+   Un segment est « fiable » s'il fait ≥ 3 km et a perdu des % (sinon l'affichage
+   en % est trop grossier pour être comparé).
+   ========================================================================== */
+const valid=s=>s.km>=3&&s.p0>s.p1;
+const segs=id=>S.trips.flatMap(t=>t.segs.filter(s=>s.b===id&&valid(s)).map(s=>({...s,date:t.date})));
+// Moyenne GLISSANTE sur les 5 derniers segments : une mauvaise journée ne fausse pas tout
+function stat(id){
+ const l=segs(id).slice(-5),km=l.reduce((a,s)=>a+s.km,0),pc=l.reduce((a,s)=>a+s.p0-s.p1,0);
+ return{n:l.length,km,rate:km?pc/km:null,auto:pc?km*100/pc:null};   // auto = km pour 100 %
+}
+// Autonomie « équivalente 100 % » d'un segment
+const autoOf=s=>s.km*100/(s.p0-s.p1);
+
+/* ===== Affichage : batteries + verdict + alertes ===== */
+function renderBats(){
+ const st={A:stat('A'),B:stat('B')};
+ $('bats').innerHTML=ID.map(id=>{
+  const s=st[id],b=S.bats.find(b=>b.id===id),low=s.auto&&s.auto<S.ab*.8;
+  return `<div class="card bat" style="--c:${col(id)}"><h3>Batterie ${id}</h3>
+  <label>N° de série<input data-sn="${id}" value="${esc(b.serial)}" placeholder="À renseigner (étiquette)"></label>
+  <div class="big" style="margin-top:10px">${s.auto?fmt(s.auto):'–'} <small>km estimés (5 dernières sorties)</small></div>
+  <div class="meter"><i style="width:${s.auto?Math.min(100,s.auto/S.ab*100):0}%"></i></div>
+  <div class="mut">${s.rate!=null?fmt(s.rate)+' % / km · '+fmt(s.km)+' km suivis':'Pas encore de données'}${low?' · <b style="color:var(--warn)">sous 80 % de l’annoncé</b>':''}</div></div>`}).join('');
+ // Verdict : compare les deux batteries (≥ 5 km suivis chacune, écart > 15 %)
+ const v=$('verdict'),a=st.A,b=st.B;v.className='verdict';
+ // Alerte garantie : 3 derniers segments d'une batterie tous sous 80 % de l'annoncé
+ const bad=ID.filter(i=>{const l=segs(i).slice(-3);return l.length===3&&l.every(s=>autoOf(s)<S.ab*.8)});
+ if(bad.length){v.classList.add('w');v.innerHTML=`🚨 Batterie ${bad.join(' et ')} : 3 sorties de suite sous 80 % de l’autonomie annoncée. À signaler au vendeur (voir « Dossier garantie »).`}
+ else if(a.km>=5&&b.km>=5){const r=a.rate/b.rate;
+  if(r>1.15||r<1/1.15){const w=r>1?'A':'B',g=r>1?'B':'A';
+   v.classList.add('w');v.innerHTML=`⚠️ La <b>batterie ${w}</b> se vide ~<b>${Math.round(Math.abs(Math.max(r,1/r)-1)*100)} % plus vite</b> que la ${g} (≈ ${fmt(st[w].auto)} km contre ≈ ${fmt(st[g].auto)} km). Vérifie que les conditions étaient comparables.`}
+  else v.innerHTML='✅ Les deux batteries se vident à un rythme comparable.'}
+ else v.innerHTML='ℹ️ Comparaison dès 5 km suivis par batterie (note toujours les % de début et de fin).';
+}
+
+/* ==========================================================================
+   SORTIE EN 2 TEMPS : Départ → (changement de batterie) → Retour
+   ========================================================================== */
+// Groupe de boutons « chips » (optionnels) : un clic sélectionne, un 2e clic désélectionne
+const grp=(g,lab,opts)=>`<div><span>${lab}</span>${opts.map(o=>`<button type="button" class="chip${C[g]===o?' on':''}" data-g="${g}" data-v="${o}">${o}</button>`).join('')}</div>`;
+
+function renderPanel(){
+ const o=S.open,el=$('panel');
+ if(!o&&S.mode!=='detail')return renderQuick(el);   // mode par défaut : saisie du soir
+ if(!o){ // --- Mode détaillé : formulaire de DÉPART ---
+  el.innerHTML=`<button class="sec2" id="mode">← Saisie du soir</button><h2 style="margin-top:12px">🟢 Départ</h2><div class="fg">
+   <label>Date<input type="date" id="d_date" value="${today()}"></label>
+   <label>Compteur (km)<input type="number" id="d_km" step="0.1" value="${cur()}"></label>
+   <label>Conducteur<input id="d_who" value="${esc(S.who)}"></label>
+   <label>Batterie montée<select id="d_b"><option>A</option><option>B</option></select></label>
+   <label>% au départ<input type="number" id="d_p" min="0" max="100" value="100"></label></div>
+   <div class="chips">${grp('assist','Assistance',['éco','normal','turbo'])}${grp('load','Charge',['vide','chargé'])}${grp('relief','Relief',['plat','côtes'])}</div>
+   <button id="go">Démarrer la sortie</button>`;
+ } else { // --- Sortie ouverte : RETOUR ou CHANGEMENT de batterie ---
+  const other=o.cur.b==='A'?'B':'A';
+  el.innerHTML=`<h2>🚴 Sortie en cours</h2>
+   <p class="mut">Départ ${fmt(o.kmd)} km · batterie ${o.cur.b} montée à ${fmt(o.cur.km0)} km (${o.cur.p0} %)</p>
+   <div class="fg"><label>Compteur actuel (km)<input type="number" id="e_km" step="0.1"></label>
+   <label>% restant, batterie ${o.cur.b}<input type="number" id="e_p" min="0" max="100"></label></div>
+   <div class="row"><button id="end">🏁 Terminer</button><button class="sec2" id="swp">🔄 Changer de batterie</button><button class="del" id="cancel">Annuler la sortie</button></div>
+   <div id="swbox" hidden class="row"><label>% de la batterie ${other} qu’on monte<input type="number" id="s_p" min="0" max="100" value="100"></label><button id="swp_ok">Valider le changement</button></div>`;
+ }
+}
+/* ==========================================================================
+   SAISIE DU SOIR (mode par défaut) : UN seul formulaire, une fois par jour.
+   L'app est « intelligente » : elle préremplit tout ce qu'elle peut deviner.
+   ========================================================================== */
+// Niveau estimé d'une batterie : 100 % si une charge a été notée depuis sa dernière sortie, sinon son dernier % de fin
+function level(id){
+ let d='',p=100;
+ S.trips.forEach(t=>t.segs.forEach(s=>{if(s.b===id&&t.date>=d){d=t.date;p=s.p1}}));
+ return S.charges.some(c=>c.b===id&&c.date>=d)?100:p;
+}
+// Distance possible = niveau × autonomie MESURÉE de la batterie (ou annoncée si pas encore de mesure)
+const reach=id=>level(id)*(stat(id).auto||S.ab)/100;
+// Conseil pour la prochaine sortie : la batterie qui peut rouler le plus loin
+const best=()=>ID.reduce((a,i)=>reach(i)>reach(a)?i:a,'A');
+const tip=()=>`💡 Prochaine sortie : monte la batterie ${best()} (≈ ${fmt(reach(best()))} km possibles, niveau ${level(best())} %)`;
+
+function renderQuick(el){
+ const blk=id=>`<div class="card bat" style="--c:${col(id)};padding:12px">
+  <label style="flex-direction:row;align-items:center;gap:8px;color:var(--tx)"><input type="checkbox" id="q_on${id}" style="width:auto"${best()===id?' checked':''}> <b style="color:var(--c)">Batterie ${id} utilisée</b></label>
+  <div class="mut" style="margin:4px 0 8px">Niveau estimé ${level(id)} % · ≈ ${fmt(reach(id))} km possibles</div>
+  <div class="fg"><label>% début<input type="number" id="q_p0${id}" min="0" max="100" value="${level(id)}"></label>
+  <label>% fin<input type="number" id="q_p1${id}" min="0" max="100"></label>
+  <label>Km<input type="number" id="q_km${id}" step="0.1" min="0"></label></div></div>`;
+ el.innerHTML=`<h2>📝 Saisie du soir</h2><div class="fg">
+  <label>Date<input type="date" id="q_date" value="${today()}"></label>
+  <label>Compteur début<input type="number" id="q_kmd" step="0.1" value="${cur()}"></label>
+  <label>Compteur fin<input type="number" id="q_kmf" step="0.1"></label>
+  <label>Conducteur<input id="q_who" value="${esc(S.who)}"></label></div>
+  <div class="two" style="margin-top:12px">${blk('A')}${blk('B')}</div>
+  <div id="q_hint" class="mut" style="margin-top:10px"></div>
+  <div class="row"><button id="q_save">Enregistrer</button><button class="sec2" id="mode">Mode détaillé (départ / retour)</button></div>`;
+ quickLive();
+}
+// Aide en direct pendant la saisie : km auto, consommation, détection de valeurs bizarres
+function quickLive(){
+ if(!$('q_save'))return;
+ const on=ID.filter(i=>$('q_on'+i).checked),t=n('q_kmf')-n('q_kmd'),h=[];
+ // Les km sont répartis à parts égales entre les batteries cochées, tant qu'on ne les a pas tapés soi-même
+ if(!isNaN(t)&&t>=0)on.forEach(i=>{const k=$('q_km'+i);if(!k.dataset.t)k.value=r1(t/on.length)});
+ if(!isNaN(t))h.push(t<0?'⚠️ Compteur de fin inférieur au début':`→ ${fmt(t)} km parcourus`);
+ on.forEach(i=>{
+  const p0=n('q_p0'+i),p1=n('q_p1'+i),km=n('q_km'+i);
+  if([p0,p1,km].some(isNaN)||km<=0)return;
+  if(p1>p0){h.push(`⚠️ Batterie ${i} : % fin supérieur au % début`);return}
+  const r=(p0-p1)/km,ref=100/S.ab;   // ref = consommation théorique (% par km)
+  h.push(`Batterie ${i} : ${fmt(r)} %/km ≈ ${fmt(100/r)} km d'autonomie${r>ref*2?' · ⚠️ très gourmand, vérifie les %':(r<ref*.5&&km>=3?' · 🤔 très économe, vérifie les %':'')}`);
+ });
+ if(on.length&&!isNaN(t)){const s=on.reduce((a,i)=>a+(n('q_km'+i)||0),0);if(Math.abs(s-t)>.2)h.push(`⚠️ Km des batteries (${fmt(s)}) ≠ total parcouru (${fmt(t)})`)}
+ $('q_hint').innerHTML=h.length?h.join('<br>'):tip();
+}
+// Un seul écouteur pour tout le panneau
+$('panel').addEventListener('input',ev=>{
+ const id=ev.target.id||'';
+ if(id.startsWith('q_km'))ev.target.dataset.t=1;                       // km saisis à la main : on n'y touche plus
+ if(id.startsWith('q_on'))ID.forEach(i=>$('q_km'+i).dataset.t='');     // changement de cochage : on recalcule
+ quickLive();
+});
+
+// Ferme le segment en cours : calcule les km faits avec la batterie qui sort
+function closeSeg(o,km,p1){o.segs.push({b:o.cur.b,p0:o.cur.p0,p1,km:r1(km-o.cur.km0)})}
+
+/* --- Tous les boutons passent par un seul écouteur (délégation d'événements) --- */
+document.addEventListener('click',ev=>{
+ const t=ev.target.closest('button');if(!t)return;
+ if(t.dataset.g){C[t.dataset.g]=C[t.dataset.g]===t.dataset.v?'':t.dataset.v;renderPanel();return}
+ if(t.dataset.id){ // suppression d'une sortie ou d'une charge
+  if(!confirm('Supprimer ?'))return;
+  S.trips=S.trips.filter(x=>String(x.id)!==t.dataset.id);S.charges=S.charges.filter(x=>String(x.id)!==t.dataset.id);
+  save();renderAll();return}
+ if(t.dataset.md){if(confirm('Supprimer cet entretien ?')){S.maint=maint().filter(x=>x.id!==t.dataset.md);save();renderAll()}return}   // supprimer un entretien
+ if(t.dataset.me){ // modifier nom + périodicité d'un entretien
+  const m=maint().find(x=>x.id===t.dataset.me),nm=prompt('Nom de l’entretien',m.name);if(nm===null)return;
+  const k=parseFloat(prompt('Tous les combien de km ?',m.every));m.name=nm.trim()||m.name;if(k>0)m.every=k;save();renderAll();return}
+ if(t.dataset.m){maint().find(x=>x.id===t.dataset.m).last=cur();save();renderAll();return}   // entretien marqué « fait » au compteur actuel
+ warn('');const o=S.open;
+ switch(t.id){
+  case 'go':{ // DÉPART
+   const km=n('d_km'),p=n('d_p');
+   if(isNaN(km)||isNaN(p))return warn('Renseigne le compteur et le % de départ.');
+   S.who=$('d_who').value.trim();
+   S.open={date:$('d_date').value,kmd:km,who:S.who,cond:{...C},segs:[],cur:{b:$('d_b').value,km0:km,p0:p}};
+   C={assist:'',load:'',relief:''};break}
+  case 'm_add':{ // nouvel entretien (décompte à partir du compteur actuel)
+   const nm=$('m_n').value.trim(),k=n('m_k');
+   if(!nm||!(k>0))return warn('Renseigne le nom et la périodicité (km).');
+   maint().push({id:'m'+Date.now(),name:nm,every:k,last:cur()});break}
+  case 'mode':S.mode=S.mode==='detail'?'soir':'detail';break;   // bascule saisie du soir <-> mode détaillé
+  case 'q_save':{ // ENREGISTREMENT de la saisie du soir
+   const kmd=n('q_kmd'),kmf=n('q_kmf'),sg=[];
+   if(isNaN(kmd)||isNaN(kmf)||kmf<kmd)return warn('Vérifie les compteurs début / fin.');
+   for(const i of ID)if($('q_on'+i).checked){
+    const p0=n('q_p0'+i),p1=n('q_p1'+i),km=n('q_km'+i);
+    if([p0,p1,km].some(isNaN)||p1>p0||km<=0)return warn(`Batterie ${i} : renseigne % début, % fin (≤ début) et km.`);
+    sg.push({b:i,p0,p1,km})}
+   if(!sg.length)return warn('Coche au moins une batterie utilisée.');
+   S.who=$('q_who').value.trim();
+   S.trips.push({id:Date.now(),date:$('q_date').value,kmd,kmf,who:S.who,cond:{},segs:sg});break}
+  case 'swp':$('swbox').hidden=!$('swbox').hidden;return;
+  case 'swp_ok':{ // CHANGEMENT de batterie : on ferme le segment, on en ouvre un autre
+   const km=n('e_km'),p1=n('e_p'),pin=n('s_p');
+   if([km,p1,pin].some(isNaN)||km<o.cur.km0||p1>o.cur.p0)return warn('Vérifie compteur actuel, % restant et % de la nouvelle batterie.');
+   closeSeg(o,km,p1);o.cur={b:o.cur.b==='A'?'B':'A',km0:km,p0:pin};break}
+  case 'end':{ // RETOUR : ferme le dernier segment et enregistre la sortie
+   const km=n('e_km'),p1=n('e_p');
+   if(isNaN(km)||isNaN(p1)||km<o.cur.km0||p1>o.cur.p0)return warn('Vérifie compteur de fin et % restant (≤ % de départ).');
+   closeSeg(o,km,p1);
+   S.trips.push({id:Date.now(),date:o.date,kmd:o.kmd,kmf:km,who:o.who,cond:o.cond,segs:o.segs});S.open=null;break}
+  case 'cancel':if(!confirm('Annuler la sortie en cours ?'))return;S.open=null;break;
+  case 'c_add':{ // JOURNAL DE CHARGE
+   const p=n('c_p'),m=n('c_m');if(isNaN(p)||isNaN(m))return warn('Renseigne le % avant charge et la durée.');
+   S.charges.push({id:Date.now(),date:$('c_d').value,b:$('c_b').value,p0:p,min:m});$('c_p').value=$('c_m').value='';break}
+  case 'all':showAll=!showAll;renderHist();return;
+  case 'gbtn':return garantie();
+  case 'exp':return exporter();
+  default:return;
+ }
+ save();renderAll();
+ // Après la saisie du soir / le retour : on remonte en haut pour montrer les alertes du jour
+ if(['q_save','end'].includes(t.id)&&!$('alerts').hidden)scrollTo({top:0,behavior:'smooth'});
+});
+
+/* ===== Historique (30 dernières sorties par défaut) + journal de charge ===== */
+function renderHist(){
+ const l=[...S.trips].sort((a,b)=>b.date.localeCompare(a.date)||b.kmf-a.kmf),v=showAll?l:l.slice(0,30);
+ $('tb').innerHTML=v.map(t=>`<tr><td>${fr(t.date)}</td><td><b>${fmt(t.kmf-t.kmd)}</b></td>
+  <td>${t.segs.map(s=>{const r=valid(s)?(s.p0-s.p1)/s.km:null;return `<span style="color:${col(s.b)};font-weight:700">${s.b}</span> ${s.p0}→${s.p1} % · ${fmt(s.km)} km ${r!=null?`<span class="pill ${r>100/S.ab*1.25?'w':''}">${fmt(r)} %/km</span>`:''}`}).join('<br>')}</td>
+  <td>${esc(Object.values(t.cond||{}).filter(Boolean).join(' · '))}</td><td>${esc(t.who)}</td><td><button class="del" data-id="${t.id}">✕</button></td></tr>`).join('');
+ $('empty').hidden=!!S.trips.length;$('all').hidden=l.length<=30;$('all').textContent=showAll?'Réduire':'Voir tout ('+l.length+')';
+ $('ctb').innerHTML=[...S.charges].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).map(c=>
+  `<tr><td>${fr(c.date)}</td><td style="color:${col(c.b)};font-weight:700">Batterie ${c.b}</td><td>de ${c.p0} % à 100 %</td><td>${c.min} min</td><td><button class="del" data-id="${c.id}">✕</button></td></tr>`).join('');
+}
+function renderAll(){
+ const tot=S.trips.reduce((a,t)=>a+t.kmf-t.kmd,0);
+ $('odo').textContent=fmt(cur());$('sum').textContent=`${S.trips.length} sorties · ${fmt(tot)} km rapportés`;
+ $('k0').value=S.km0;$('ab').value=S.ab;
+ renderBats();chart();renderPanel();renderMaint();renderHist();renderAlerts();
+}
+
+/* ==========================================================================
+   OUTILS : sauvegarde / restauration / dossier garantie / réglages
+   ========================================================================== */
+function exporter(){ // télécharge toutes les données dans un fichier JSON
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));
+ a.download='yokler-xl-sauvegarde-'+today()+'.json';a.click()}
+$('imp').addEventListener('change',ev=>{ // restaure depuis un fichier JSON
+ const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const o=JSON.parse(r.result);if(!Array.isArray(o.trips))throw 0;
+  if(!confirm('Remplacer les données actuelles par cette sauvegarde ?'))return;
+  S=Object.assign(S,o);save();renderAll()}catch(e){warn('Fichier de sauvegarde invalide.')}};
+ r.readAsText(f);ev.target.value=''});
+function garantie(){ // page imprimable : n° de série, autonomie mesurée, détail des segments
+ let h=`<h1>Dossier batteries – Yokler XL</h1><p>Édité le ${fr(today())} · compteur ${fmt(cur())} km · autonomie annoncée ${S.ab} km par batterie</p>`;
+ ID.forEach(id=>{const s=stat(id),b=S.bats.find(b=>b.id===id);
+  h+=`<h2>Batterie ${id} – N° de série : ${esc(b.serial)||'non renseigné'}</h2><p>Autonomie mesurée : <b>${s.auto?fmt(s.auto)+' km':'n/d'}</b> (moyenne sur ${s.n} derniers segments)</p>
+  <table><tr><th>Date</th><th>% début → fin</th><th>Km</th><th>Autonomie équivalente</th></tr>${segs(id).map(x=>`<tr><td>${fr(x.date)}</td><td>${x.p0} → ${x.p1}</td><td>${fmt(x.km)}</td><td>${fmt(autoOf(x))} km</td></tr>`).join('')}</table>`});
+ $('gar').innerHTML=h;document.body.classList.add('pg');print();
+}
+addEventListener('afterprint',()=>document.body.classList.remove('pg'));
+// Champs « change » : n° de série et réglages
+$('bats').addEventListener('change',ev=>{const id=ev.target.dataset.sn;if(id){S.bats.find(b=>b.id===id).serial=ev.target.value.trim();save();renderBats()}});
+$('k0').addEventListener('change',()=>{S.km0=n('k0')||0;save();renderAll()});
+$('ab').addEventListener('change',()=>{S.ab=n('ab')||40;save();renderAll()});
+
+/* ==========================================================================
+   GRAPHIQUE : consommation (% perdus par km) de chaque segment, A en vert, B en bleu.
+   Dessiné en SVG à la main, sans librairie.
+   ========================================================================== */
+function chart(){
+ const all=ID.flatMap(i=>segs(i)).sort((a,b)=>a.date.localeCompare(b.date));
+ if(all.length<2){$('chart').innerHTML='<p class="mut">Le graphique apparaîtra après 2 segments suivis (≥ 3 km, avec % début et fin).</p>';return}
+ const W=640,H=180,L=36,T=10,B=24,th=100/S.ab;   // th = consommation théorique
+ const rate=s=>(s.p0-s.p1)/s.km,mx=Math.max(th*1.3,...all.map(s=>rate(s)*1.15));
+ const X=k=>L+(W-L-10)*k/(all.length-1),Y=v=>T+(H-T-B)*(1-v/mx);
+ let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">`;
+ [0,.5,1].forEach(f=>g+=`<line x1="${L}" x2="${W-10}" y1="${Y(mx*f)}" y2="${Y(mx*f)}" style="stroke:var(--bd)"/><text x="${L-6}" y="${Y(mx*f)+4}" text-anchor="end" font-size="11" style="fill:var(--mut)">${fmt(mx*f)}</text>`);
+ g+=`<line x1="${L}" x2="${W-10}" y1="${Y(th)}" y2="${Y(th)}" stroke-dasharray="5 4" style="stroke:var(--mut)"/>`;
+ ID.forEach(i=>{
+  const p=[];all.forEach((s,k)=>{if(s.b===i)p.push([X(k),Y(rate(s))])});
+  if(p.length>1)g+=`<polyline fill="none" stroke-width="2.5" points="${p.map(q=>q.join(',')).join(' ')}" style="stroke:${col(i)}"/>`;
+  p.forEach(q=>g+=`<circle cx="${q[0]}" cy="${q[1]}" r="4.5" style="fill:${col(i)}"/>`)});
+ $('chart').innerHTML=g+`</svg><div class="mut"><b style="color:var(--ca)">●</b> Batterie A &nbsp; <b style="color:var(--cb)">●</b> Batterie B</div>`;
+}
+
+/* ==========================================================================
+   ENTRETIEN : rappels basés sur le compteur. « Fait » mémorise le compteur actuel.
+   Pour changer une périodicité, modifie le nombre « every » ci-dessous.
+   ========================================================================== */
+const maint=()=>S.maint||(S.maint=[
+ {id:'p',name:'Pression des pneus',every:200,last:S.km0},
+ {id:'c',name:'Graissage de la chaîne',every:300,last:S.km0},
+ {id:'f',name:'Contrôle des freins',every:500,last:S.km0}]);
+function renderMaint(){
+ $('maint').innerHTML=maint().map(m=>{
+  const left=m.last+m.every-cur(),late=left<=0;   // km restants avant la prochaine échéance
+  return `<div class="row" style="justify-content:space-between;margin:0;padding:8px 0;border-bottom:1px solid var(--bd)"><span>${m.name}<br><span class="mut">tous les ${m.every} km · fait à ${fmt(m.last)} km</span></span>
+  <span><span class="pill ${late||left<30?'w':''}">${late?'À faire ('+fmt(-left)+' km de retard)':'dans '+fmt(left)+' km'}</span> <button class="sec2" data-m="${m.id}">Fait</button> <button class="sec2" data-me="${m.id}" title="Modifier">✏️</button> <button class="del" data-md="${m.id}" title="Supprimer">✕</button></span></div>`}).join('')+
+  // Formulaire pour créer un nouvel entretien directement dans l'app
+  `<div class="fg" style="margin-top:12px"><label>Nouvel entretien<input id="m_n" placeholder="ex : Serrage des roues"></label><label>Tous les (km)<input type="number" id="m_k" min="1"></label></div><div class="row"><button id="m_add">Ajouter</button></div>`;
+}
+
+/* ==========================================================================
+   ALERTES : bandeau en haut de l'app, recalculé à chaque nouveau compteur.
+   Rien à surveiller à la main : saisis tes km le soir, l'app prévient.
+   ========================================================================== */
+function renderAlerts(){
+ const a=[];
+ // 1) Entretiens : en retard, ou bientôt (10 % de la périodicité, 10 km minimum)
+ maint().forEach(m=>{
+  const left=m.last+m.every-cur();
+  if(left<=0)a.push(`🔧 <b>${esc(m.name)}</b> : en retard de ${fmt(-left)} km`);
+  else if(left<=Math.max(10,m.every*.1))a.push(`🔧 <b>${esc(m.name)}</b> dans ${fmt(left)} km`)});
+ // 2) Batteries : autonomie anormale 3 sorties de suite, ou niveau bas à recharger
+ ID.forEach(i=>{
+  const l=segs(i).slice(-3);
+  if(l.length===3&&l.every(s=>autoOf(s)<S.ab*.8))a.push(`🔋 <b>Batterie ${i}</b> sous 80 % de l’autonomie annoncée sur 3 sorties`);
+  if(level(i)<20)a.push(`🔌 <b>Batterie ${i}</b> à ≈ ${level(i)} % : à recharger`)});
+ const el=$('alerts');el.hidden=!a.length;el.innerHTML=a.map(x=>`<div>${x}</div>`).join('');
+}
+
+/* ===== Démarrage ===== */
+$('c_d').value=today();renderAll();
+// Interface épurée : un clic sur un titre de section la replie / la déplie.
+// Ouvertes par défaut : Batteries, Sortie, Entretien. Repliées : le reste.
+document.querySelectorAll('.sec').forEach(h=>{
+ const b=h.nextElementSibling;if(!b)return;
+ const t=h.textContent,set=o=>{b.hidden=!o;h.textContent=(o?'▾ ':'▸ ')+t};
+ h.style.cursor='pointer';set(!['Journal de charge','Historique','Outils'].includes(t));
+ h.onclick=()=>set(b.hidden)});
+</script>
+</body>
+</html>
